@@ -1,12 +1,29 @@
 "use client";
 import { Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Engine } from "caelus";
+import {
+  Engine, SIGNS, julianDay,
+  progressedLongitude, solarReturn, solarArc,
+} from "caelus";
 import { embeddedData } from "caelus/data-embedded";
 import { toUT } from "caelus-birth";
 import ChartView from "../../components/ChartView";
 
 const engine = new Engine(embeddedData);
+
+// longitude -> "Sign 12.3°"
+const fmtLon = (lon: number) => {
+  const x = ((lon % 360) + 360) % 360;
+  return `${SIGNS[Math.floor(x / 30)]} ${(x % 30).toFixed(1)}\u00b0`;
+};
+
+// UT Julian Day -> "YYYY-MM-DD HH:MM UT" (rounded to the minute)
+const jdToUtc = (jd: number) => {
+  const d = new Date(Math.round((jd - 2440587.5) * 1440) * 60_000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ` +
+    `${p(d.getUTCHours())}:${p(d.getUTCMinutes())} UT`;
+};
 
 function ChartInner() {
   const params = useSearchParams();
@@ -16,7 +33,7 @@ function ChartInner() {
   const timeUnknown = params.get("tu") === "1";
   const useLater = params.get("alt") === "1"; // ambiguous time: later candidate
 
-  const { t, chart, error } = useMemo(() => {
+  const { t, chart, derived, error } = useMemo(() => {
     try {
       const t = toUT({
         year: n("y"), month: n("mo"), day: n("d"), hour: n("h"), minute: n("mi"),
@@ -38,15 +55,35 @@ function ChartInner() {
         utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second,
         n("lat"), n("lon"), timeUnknown ? "whole_sign" : "placidus",
       );
-      return { t, chart, error: null };
+
+      // Derived charts, computed live for "now": secondary progressions (a day
+      // of real motion per year of life) and the upcoming solar return. These
+      // are time-mappings on the validated positions, so they hold even when the
+      // birth time is unknown (planet signs are reliable; only houses need it).
+      const natalJd = chart.jdUt;
+      const now = new Date();
+      const todayJd = julianDay(
+        now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(),
+        now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds(),
+      );
+      const sr = solarReturn(engine, natalJd, todayJd, todayJd + 366);
+      const derived = {
+        on: now.toISOString().slice(0, 10),
+        progSun: fmtLon(progressedLongitude(engine, "sun", natalJd, todayJd)),
+        progMoon: fmtLon(progressedLongitude(engine, "moon", natalJd, todayJd)),
+        arc: solarArc(engine, natalJd, todayJd),
+        solarReturn: sr.length ? jdToUtc(sr[0]) : null,
+      };
+
+      return { t, chart, derived, error: null };
     } catch (e) {
-      return { t: null, chart: null, error: e instanceof Error ? e.message : String(e) };
+      return { t: null, chart: null, derived: null, error: e instanceof Error ? e.message : String(e) };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
   if (error) return <p style={{ color: "#e08a8a" }}>{error}</p>;
-  if (!t || !chart) return null;
+  if (!t || !chart || !derived) return null;
 
   const localTime = `${params.get("h")}:${String(n("mi")).padStart(2, "0")}`;
 
@@ -93,6 +130,27 @@ function ChartInner() {
       )}
 
       <ChartView chart={chart} hideHouses={timeUnknown} />
+
+      <section style={{ marginTop: "1.75rem" }}>
+        <h2 style={{ fontSize: "1rem", letterSpacing: "0.05em", margin: "0 0 0.1rem" }}>
+          derived — as of {derived.on}
+        </h2>
+        <p style={{ opacity: 0.6, fontSize: "0.85em", margin: "0 0 0.6rem" }}>
+          Secondary progressions and the next solar return, computed live from the
+          natal chart.
+        </p>
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.9 }}>
+          <li>Progressed Sun: <strong>{derived.progSun}</strong></li>
+          <li>Progressed Moon: <strong>{derived.progMoon}</strong></li>
+          <li>
+            Solar arc: <strong>+{derived.arc.toFixed(1)}°</strong>{" "}
+            <span style={{ opacity: 0.55 }}>(natal positions advanced by this much)</span>
+          </li>
+          {derived.solarReturn && (
+            <li>Next solar return: <strong>{derived.solarReturn}</strong></li>
+          )}
+        </ul>
+      </section>
     </main>
   );
 }
