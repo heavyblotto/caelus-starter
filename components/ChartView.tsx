@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { BODIES, fmtLon, mod, type Chart } from "caelus";
-import { ChartWheel } from "caelus-wheel";
+import { ChartWheel, ChartSphere } from "caelus-wheel";
 
 function houseOf(cusps: number[], lon: number) {
   for (let i = 0; i < 12; i++) {
@@ -13,6 +13,7 @@ function houseOf(cusps: number[], lon: number) {
 export default function ChartView({ chart, hideHouses = false }: { chart: Chart; hideHouses?: boolean }) {
   const [reading, setReading] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<"wheel" | "sphere">("wheel");
 
   const getReading = async () => {
     setBusy(true);
@@ -34,7 +35,19 @@ export default function ChartView({ chart, hideHouses = false }: { chart: Chart;
   return (
     <div>
       <div style={{ maxWidth: 480, margin: "1rem 0" }}>
-        <ChartWheel chart={chart} size={480} />
+        <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.6rem" }}>
+          {(["wheel", "sphere"] as const).map((v) => (
+            <button key={v} onClick={() => setView(v)} style={{
+              background: view === v ? "#1a1626" : "transparent", color: "#e8e4f0",
+              border: `1px solid ${view === v ? "#8a7fd4" : "#3a3550"}`,
+              borderRadius: 4, padding: "0.25rem 0.7rem", cursor: "pointer",
+              font: "inherit", textTransform: "capitalize",
+            }}>{v}</button>
+          ))}
+        </div>
+        {view === "wheel"
+          ? <ChartWheel chart={chart} size={480} />
+          : <ChartSphere chart={chart} size={480} />}
       </div>
 
       <h2>positions</h2>

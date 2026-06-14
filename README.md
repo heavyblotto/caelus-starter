@@ -3,7 +3,7 @@
 A Next.js 15 starter that takes a birth form to a natal chart wheel. It uses
 [caelus](https://github.com/heavyblotto/caelus) (MIT ephemeris engine, charts
 compute client-side), `caelus-birth` (timezone resolution), and `caelus-wheel`
-(SVG chart wheel).
+(SVG chart wheel, with a 3D `ChartSphere` view toggle).
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fheavyblotto%2Fcaelus-starter)
 
