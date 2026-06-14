@@ -36,7 +36,7 @@ test:birth` checks nine timezone edge cases in CI.
 
 | Route | What it does |
 |---|---|
-| `/` | Birth form (place search via Open-Meteo geocoding, manual lat/lon fallback, "time unknown" path) and a today's-sky strip |
+| `/` | Birth form (manual lat/lon or `navigator.geolocation` by default; opt-in city search via Open-Meteo; "time unknown" path) and a today's-sky strip |
 | `/chart` | Wheel, positions, houses, aspects, all client-side via `caelus/data-embedded` |
 | `/rectify` | Handling unknown birth times (the `rectification_grid` flow) |
 | `POST /api/reading` | Optional LLM reading. Set `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`); without a key the app runs charts-only |
@@ -46,11 +46,24 @@ text: positions are computed (caelus is verified per body against Swiss
 Ephemeris; see [ephemengine.com/validation](https://ephemengine.com/validation)),
 and the interpretation is left to you.
 
+## Privacy
+
+Charts compute client-side, so a birth never has to leave the browser. The form
+defaults to manual coordinate entry (or `navigator.geolocation`); on that path
+the date, time, and place are processed entirely in your browser and are never
+transmitted to a server or stored — caelus-birth resolves the timezone offline
+from the coordinates. City-name search is an explicit opt-in: it's the one
+feature that contacts the network, sending the place name (and nothing else) to
+the Open-Meteo geocoding API to look up coordinates. The template persists no
+inputs (no localStorage, no analytics on what you enter).
+
 ## What to build next
 
 - **Transits and timing:** `caelus-mcp` exposes `transits`,
   `find_aspect_dates` (including retrograde re-hits), and `rectification_grid`
-  to any MCP client: `npx caelus-mcp`.
+  to any MCP client. It's on the [MCP Registry](https://registry.modelcontextprotocol.io)
+  as `io.github.heavyblotto/caelus-mcp`. Add it to Claude Code with
+  `claude mcp add caelus -- npx caelus-mcp`, or run it directly: `npx caelus-mcp`.
 - **Engine docs:** [ephemengine.com](https://ephemengine.com): playground,
   per-body validation tables, data provenance.
 - **For AI assistants:** [ephemengine.com/llms.txt](https://ephemengine.com/llms.txt)
