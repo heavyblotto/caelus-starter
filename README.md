@@ -59,10 +59,13 @@ inputs (no localStorage, no analytics on what you enter).
 
 ## What to build next
 
-- **Transits and timing:** `caelus-mcp` exposes `transits`,
-  `find_aspect_dates` (including retrograde re-hits), and `rectification_grid`
-  to any MCP client. It's on the [MCP Registry](https://registry.modelcontextprotocol.io)
-  as `io.github.heavyblotto/caelus-mcp`. Add it to Claude Code with
+- **Transits and timing:** `caelus-mcp` exposes eighteen chart tools to any
+  MCP client — `transits`, `find_aspect_dates` (including retrograde re-hits),
+  `rectification_grid`, `synastry`, `returns`, `progressions`, the Hellenistic
+  time-lords (`lots`, `profections`, `firdaria`, zodiacal `releasing`), and
+  primary `directions`. It's on the
+  [MCP Registry](https://registry.modelcontextprotocol.io) as
+  `io.github.heavyblotto/caelus-mcp`. Add it to Claude Code with
   `claude mcp add caelus -- npx caelus-mcp`, or run it directly: `npx caelus-mcp`.
 - **Engine docs:** [ephemengine.com](https://ephemengine.com): playground,
   per-body validation tables, data provenance.
