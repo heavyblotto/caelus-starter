@@ -50,7 +50,9 @@ and the interpretation is left to you.
 
 - **Transits and timing:** `caelus-mcp` exposes `transits`,
   `find_aspect_dates` (including retrograde re-hits), and `rectification_grid`
-  to any MCP client: `npx caelus-mcp`.
+  to any MCP client. It's on the [MCP Registry](https://registry.modelcontextprotocol.io)
+  as `io.github.heavyblotto/caelus-mcp`. Add it to Claude Code with
+  `claude mcp add caelus -- npx caelus-mcp`, or run it directly: `npx caelus-mcp`.
 - **Engine docs:** [ephemengine.com](https://ephemengine.com): playground,
   per-body validation tables, data provenance.
 - **For AI assistants:** [ephemengine.com/llms.txt](https://ephemengine.com/llms.txt)
