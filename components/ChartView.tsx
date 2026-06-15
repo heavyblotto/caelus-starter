@@ -1,14 +1,7 @@
 "use client";
 import { useState } from "react";
-import { BODIES, fmtLon, mod, type Chart } from "caelus";
+import { BODIES, fmtLon, type Chart } from "caelus";
 import { ChartWheel, ChartSphere } from "caelus-wheel";
-
-function houseOf(cusps: number[], lon: number) {
-  for (let i = 0; i < 12; i++) {
-    if (mod(lon - cusps[i], 360) < mod(cusps[(i + 1) % 12] - cusps[i], 360)) return i + 1;
-  }
-  return 12;
-}
 
 export default function ChartView({ chart, hideHouses = false }: { chart: Chart; hideHouses?: boolean }) {
   const [reading, setReading] = useState<string | null>(null);
@@ -53,15 +46,19 @@ export default function ChartView({ chart, hideHouses = false }: { chart: Chart;
       <h2>positions</h2>
       <table style={{ borderSpacing: "0.8rem 0.15rem" }}>
         <tbody>
-          {BODIES.map((b) => (
-            <tr key={b}>
-              <td style={{ opacity: 0.6 }}>{b}</td>
-              <td>{fmtLon(chart.bodies[b].lon)}{chart.bodies[b].retrograde ? " ℞" : ""}</td>
-              {!hideHouses && (
-                <td style={{ opacity: 0.6 }}>house {houseOf(chart.cusps, chart.bodies[b].lon)}</td>
-              )}
-            </tr>
-          ))}
+          {BODIES.map((b) => {
+            const body = chart.bodies[b];
+            if (!body) return null; // omitted when outside its fitted range (e.g. Chiron)
+            return (
+              <tr key={b}>
+                <td style={{ opacity: 0.6 }}>{b}</td>
+                <td>{fmtLon(body.lon)}{body.retrograde ? " ℞" : ""}</td>
+                {!hideHouses && (
+                  <td style={{ opacity: 0.6 }}>house {body.house}</td>
+                )}
+              </tr>
+            );
+          })}
           {!hideHouses && (
             <>
               <tr><td style={{ opacity: 0.6 }}>ASC</td><td>{fmtLon(chart.angles.asc)}</td><td /></tr>

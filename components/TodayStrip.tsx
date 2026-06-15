@@ -18,7 +18,7 @@ export default function TodayStrip() {
   }, []);
 
   if (!chart) return null;
-  const retro = BODIES.filter((b) => chart.bodies[b].retrograde);
+  const retro = BODIES.filter((b) => chart.bodies[b]?.retrograde);
 
   return (
     <p style={{ opacity: 0.55, fontSize: "0.85em", borderTop: "1px solid #2a2438", paddingTop: "1rem" }}>
