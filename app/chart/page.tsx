@@ -3,7 +3,7 @@ import { Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Engine, SIGNS, julianDay,
-  progressedLongitude, solarReturn, solarArc,
+  progressedLongitude, solarReturn, solarArc, type Chart,
 } from "caelus";
 import { embeddedData } from "caelus/data-embedded";
 import { toUT } from "caelus-birth";
@@ -25,6 +25,52 @@ const jdToUtc = (jd: number) => {
     `${p(d.getUTCHours())}:${p(d.getUTCMinutes())} UT`;
 };
 
+// Resolve the query params to a UT instant and a chart. `useLater` picks the
+// second candidate of an ambiguous (clocks-fell-back) local time.
+function resolveChart(p: URLSearchParams, useLater: boolean, timeUnknown: boolean) {
+  const n = (k: string) => Number(p.get(k));
+  const t = toUT({
+    year: n("y"), month: n("mo"), day: n("d"), hour: n("h"), minute: n("mi"),
+    lat: n("lat"), lon: n("lon"),
+    ...(p.get("zone") ? { zone: p.get("zone")! } : {}),
+  });
+  const utc = useLater && t.candidates?.[1]
+    ? (() => {
+        const ms = (t.candidates[1].jdUt - 2440587.5) * 86_400_000;
+        const d = new Date(Math.round(ms));
+        return {
+          year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(),
+          hour: d.getUTCHours(), minute: d.getUTCMinutes(), second: d.getUTCSeconds(),
+        };
+      })()
+    : t.utc;
+  const chart = engine.chart(
+    utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second,
+    n("lat"), n("lon"), timeUnknown ? "whole_sign" : "placidus",
+  );
+  return { t, chart };
+}
+
+// Derived charts for "now": secondary progressions (a day of motion per year of
+// life) and the next solar return. Time-mappings on the validated positions, so
+// they hold even when the birth time is unknown.
+function buildDerived(chart: Chart) {
+  const natalJd = chart.jdUt;
+  const now = new Date();
+  const todayJd = julianDay(
+    now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(),
+    now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds(),
+  );
+  const sr = solarReturn(engine, natalJd, todayJd, todayJd + 366);
+  return {
+    on: now.toISOString().slice(0, 10),
+    progSun: fmtLon(progressedLongitude(engine, "sun", natalJd, todayJd)),
+    progMoon: fmtLon(progressedLongitude(engine, "moon", natalJd, todayJd)),
+    arc: solarArc(engine, natalJd, todayJd),
+    solarReturn: sr.length ? jdToUtc(sr[0]) : null,
+  };
+}
+
 function ChartInner() {
   const params = useSearchParams();
   const router = useRouter();
@@ -35,47 +81,8 @@ function ChartInner() {
 
   const { t, chart, derived, error } = useMemo(() => {
     try {
-      const t = toUT({
-        year: n("y"), month: n("mo"), day: n("d"), hour: n("h"), minute: n("mi"),
-        lat: n("lat"), lon: n("lon"),
-        ...(params.get("zone") ? { zone: params.get("zone")! } : {}),
-      });
-      // ambiguous fall-back hour: default is the earlier instant; honor ?alt=1
-      const utc = useLater && t.candidates?.[1]
-        ? (() => {
-            const ms = (t.candidates[1].jdUt - 2440587.5) * 86_400_000;
-            const d = new Date(Math.round(ms));
-            return {
-              year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(),
-              hour: d.getUTCHours(), minute: d.getUTCMinutes(), second: d.getUTCSeconds(),
-            };
-          })()
-        : t.utc;
-      const chart = engine.chart(
-        utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second,
-        n("lat"), n("lon"), timeUnknown ? "whole_sign" : "placidus",
-      );
-
-      // Derived charts, computed live for "now": secondary progressions (a day
-      // of real motion per year of life) and the upcoming solar return. These
-      // are time-mappings on the validated positions, so they hold even when the
-      // birth time is unknown (planet signs are reliable; only houses need it).
-      const natalJd = chart.jdUt;
-      const now = new Date();
-      const todayJd = julianDay(
-        now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(),
-        now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds(),
-      );
-      const sr = solarReturn(engine, natalJd, todayJd, todayJd + 366);
-      const derived = {
-        on: now.toISOString().slice(0, 10),
-        progSun: fmtLon(progressedLongitude(engine, "sun", natalJd, todayJd)),
-        progMoon: fmtLon(progressedLongitude(engine, "moon", natalJd, todayJd)),
-        arc: solarArc(engine, natalJd, todayJd),
-        solarReturn: sr.length ? jdToUtc(sr[0]) : null,
-      };
-
-      return { t, chart, derived, error: null };
+      const { t, chart } = resolveChart(params, useLater, timeUnknown);
+      return { t, chart, derived: buildDerived(chart), error: null };
     } catch (e) {
       return { t: null, chart: null, derived: null, error: e instanceof Error ? e.message : String(e) };
     }
